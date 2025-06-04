@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkbluefish=self.webpackChunkbluefish||[]).push([[1903],{1912:s=>{s.exports=JSON.parse('{"blogBasePath":"/bluefish/blog","blogTitle":"Blog","authorsListPath":"/bluefish/blog/authors"}')}}]);

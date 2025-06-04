@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkbluefish=self.webpackChunkbluefish||[]).push([[4445],{1171:e=>{e.exports=JSON.parse('{"metadata":{"permalink":"/bluefish/blog","page":1,"postsPerPage":10,"totalPages":1,"totalCount":4,"blogDescription":"Blog","blogTitle":"Blog"}}')}}]);

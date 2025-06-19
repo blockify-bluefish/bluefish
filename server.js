@@ -72,7 +72,43 @@ app.get('/', async (req, res) => {
             modifiedHtml = hideFramerCSS + modifiedHtml;
         }
         
-        console.log('Framer elements removed from HTML');
+        // Replace meta tags content with Bluefish information
+        modifiedHtml = modifiedHtml.replace(
+            /<meta name="generator" content="[^"]*">/g,
+            '<meta name="generator" content="Bluefish Web3 Gateway">'
+        );
+        
+        modifiedHtml = modifiedHtml.replace(
+            /<title>[^<]*<\/title>/g,
+            '<title>Bluefish - The Secure Web3 Gateway</title>'
+        );
+        
+        modifiedHtml = modifiedHtml.replace(
+            /<meta name="description" content="[^"]*">/g,
+            '<meta name="description" content="Your multi-chain wallet to explore DeFi, NFTs, and the future of Web3. Send tokens, swap on DEXs, and grow your community — all in one secure platform.">'
+        );
+        
+        // Replace Open Graph meta tags
+        modifiedHtml = modifiedHtml.replace(
+            /<meta property="og:title" content="[^"]*">/g,
+            '<meta property="og:title" content="Bluefish - The Secure Web3 Gateway">'
+        );
+        
+        modifiedHtml = modifiedHtml.replace(
+            /<meta property="og:description" content="[^"]*">/g,
+            '<meta property="og:description" content="Your multi-chain wallet to explore DeFi, NFTs, and the future of Web3. Send tokens, swap on DEXs, and grow your community — all in one secure platform.">'
+        );
+        
+        // Replace Twitter meta tags
+        modifiedHtml = modifiedHtml.replace(
+            /<meta name="twitter:title" content="[^"]*">/g,
+            '<meta name="twitter:title" content="Bluefish - The Secure Web3 Gateway">'
+        );
+        
+        modifiedHtml = modifiedHtml.replace(
+            /<meta name="twitter:description" content="[^"]*">/g,
+            '<meta name="twitter:description" content="Your multi-chain wallet to explore DeFi, NFTs, and the future of Web3. Send tokens, swap on DEXs, and grow your community — all in one secure platform.">'
+        );
         
         res.send(modifiedHtml);
     } catch (error) {

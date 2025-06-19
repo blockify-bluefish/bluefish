@@ -1,15 +1,19 @@
 const express = require('express');
-const path = require('path');
+const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve static files from the current directory
-app.use(express.static(__dirname));
-
-// Serve the index.html file for the root route
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+// Fetch and serve content from Framer app
+app.get('/', async (req, res) => {
+    try {
+        const response = await fetch('https://internal-area-042798.framer.app/');
+        const html = await response.text();
+        res.send(html);
+    } catch (error) {
+        console.error('Error fetching from Framer app:', error);
+        res.status(500).send('Error loading content from Framer app');
+    }
 });
 
 // Handle 404 errors

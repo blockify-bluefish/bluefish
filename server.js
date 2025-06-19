@@ -6,32 +6,10 @@ const PORT = process.env.PORT || 3001;
 
 const FRAMER_URL = 'https://internal-area-042798.framer.app/';
 
-// Cache object to store fetched content
-let cache = {
-    content: null,
-    timestamp: null,
-    expiry: 24 * 60 * 60 * 1000 // 24 hours in milliseconds
-};
-
-// Function to check if cache is valid
-function isCacheValid() {
-    if (!cache.content || !cache.timestamp) {
-        return false;
-    }
-    return (Date.now() - cache.timestamp) < cache.expiry;
-}
-
-// Fetch and serve content from Framer app with caching
+// Fetch and serve content from Framer app
 app.get('/', async (req, res) => {
     try {
-        // Check if we have valid cached content
-        if (isCacheValid()) {
-            console.log('Serving content from cache');
-            res.send(cache.content);
-            return;
-        }
-
-        console.log('Cache expired or empty, fetching new content from Framer app...');
+        console.log('Fetching content from Framer app...');
         
         const response = await fetch(FRAMER_URL, {
             headers: {
@@ -73,24 +51,32 @@ app.get('/', async (req, res) => {
             ''
         );
         
-        console.log('Framer elements removed from HTML');
+        // Add CSS to hide any remaining Framer elements
+        const hideFramerCSS = `
+            <style>
+                #__framer-badge-container,
+                #__framer-editorbar,
+                .__framer-badge {
+                    display: none !important;
+                    visibility: hidden !important;
+                }
+            </style>
+        `;
         
-        // Cache the content
-        cache.content = modifiedHtml;
-        cache.timestamp = Date.now();
-        console.log('Content cached for 24 hours');
+        // Inject CSS before closing head tag or at the beginning of body
+        if (modifiedHtml.includes('</head>')) {
+            modifiedHtml = modifiedHtml.replace('</head>', hideFramerCSS + '</head>');
+        } else if (modifiedHtml.includes('<body')) {
+            modifiedHtml = modifiedHtml.replace('<body', hideFramerCSS + '<body');
+        } else {
+            modifiedHtml = hideFramerCSS + modifiedHtml;
+        }
+        
+        console.log('Framer elements removed from HTML');
         
         res.send(modifiedHtml);
     } catch (error) {
         console.error('Error fetching from Framer app:', error.message);
-        
-        // If we have cached content but it's expired, serve it anyway as fallback
-        if (cache.content) {
-            console.log('Serving expired cache content as fallback');
-            res.send(cache.content);
-            return;
-        }
-        
         res.status(500).send(`
             <html>
                 <body>
@@ -102,28 +88,6 @@ app.get('/', async (req, res) => {
             </html>
         `);
     }
-});
-
-// Route to check cache status
-app.get('/cache-status', (req, res) => {
-    const timeLeft = cache.timestamp ? 
-        Math.max(0, cache.expiry - (Date.now() - cache.timestamp)) : 0;
-    
-    res.json({
-        cached: !!cache.content,
-        timestamp: cache.timestamp ? new Date(cache.timestamp).toISOString() : null,
-        timeLeftMs: timeLeft,
-        timeLeftHours: Math.round(timeLeft / (1000 * 60 * 60) * 100) / 100,
-        isValid: isCacheValid()
-    });
-});
-
-// Route to clear cache manually
-app.post('/clear-cache', (req, res) => {
-    cache.content = null;
-    cache.timestamp = null;
-    console.log('Cache cleared manually');
-    res.json({ message: 'Cache cleared successfully' });
 });
 
 // Handle 404 errors

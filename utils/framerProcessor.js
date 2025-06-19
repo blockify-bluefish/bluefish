@@ -1,6 +1,4 @@
-// const FRAMER_URL = 'https://internal-area-042798.framer.app/';
-
-const FRAMER_URL = 'https://predictable-team-642357.framer.app/';
+const FRAMER_URL = 'https://internal-area-042798.framer.app/';
 
 // Language-specific meta content
 const metaContent = {

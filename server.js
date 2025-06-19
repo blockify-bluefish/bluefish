@@ -110,6 +110,108 @@ app.get('/', async (req, res) => {
             '<meta name="twitter:description" content="Your multi-chain wallet to explore DeFi, NFTs, and the future of Web3. Send tokens, swap on DEXs, and grow your community — all in one secure platform.">'
         );
         
+        // Add JavaScript to protect meta tags from being changed by Framer
+        const protectMetaScript = `
+            <script>
+                // Protect meta tags from being modified by Framer JavaScript
+                (function() {
+                    // Store original meta content
+                    const originalMetas = {
+                        title: 'Bluefish - The Secure Web3 Gateway',
+                        description: 'Your multi-chain wallet to explore DeFi, NFTs, and the future of Web3. Send tokens, swap on DEXs, and grow your community — all in one secure platform.',
+                        generator: 'Bluefish Web3 Gateway'
+                    };
+                    
+                    // Function to restore meta tags
+                    function restoreMetaTags() {
+                        // Restore title
+                        document.title = originalMetas.title;
+                        
+                        // Restore description
+                        const descMeta = document.querySelector('meta[name="description"]');
+                        if (descMeta) descMeta.setAttribute('content', originalMetas.description);
+                        
+                        // Restore generator
+                        const genMeta = document.querySelector('meta[name="generator"]');
+                        if (genMeta) genMeta.setAttribute('content', originalMetas.generator);
+                        
+                        // Restore OG tags
+                        const ogTitle = document.querySelector('meta[property="og:title"]');
+                        if (ogTitle) ogTitle.setAttribute('content', originalMetas.title);
+                        
+                        const ogDesc = document.querySelector('meta[property="og:description"]');
+                        if (ogDesc) ogDesc.setAttribute('content', originalMetas.description);
+                        
+                        // Restore Twitter tags
+                        const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+                        if (twitterTitle) twitterTitle.setAttribute('content', originalMetas.title);
+                        
+                        const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+                        if (twitterDesc) twitterDesc.setAttribute('content', originalMetas.description);
+                    }
+                    
+                    // Override document.title setter
+                    let titleDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'title');
+                    if (titleDescriptor && titleDescriptor.set) {
+                        Object.defineProperty(document, 'title', {
+                            get: titleDescriptor.get,
+                            set: function(newTitle) {
+                                // Only allow our title
+                                if (newTitle !== originalMetas.title) {
+                                    console.log('Blocked title change attempt:', newTitle);
+                                    return;
+                                }
+                                titleDescriptor.set.call(this, newTitle);
+                            }
+                        });
+                    }
+                    
+                    // Monitor and restore meta tags periodically
+                    setInterval(restoreMetaTags, 1000);
+                    
+                    // Restore on DOM ready
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', restoreMetaTags);
+                    } else {
+                        restoreMetaTags();
+                    }
+                    
+                    // Watch for mutations
+                    const observer = new MutationObserver(function(mutations) {
+                        let needsRestore = false;
+                        mutations.forEach(function(mutation) {
+                            if (mutation.type === 'attributes' && 
+                                (mutation.target.tagName === 'META' || mutation.target.tagName === 'TITLE')) {
+                                needsRestore = true;
+                            }
+                        });
+                        if (needsRestore) {
+                            setTimeout(restoreMetaTags, 100);
+                        }
+                    });
+                    
+                    observer.observe(document.head, {
+                        attributes: true,
+                        childList: true,
+                        subtree: true
+                    });
+                })();
+            </script>
+        `;
+        
+        // Inject the protection script before closing head tag
+        if (modifiedHtml.includes('</head>')) {
+            modifiedHtml = modifiedHtml.replace('</head>', protectMetaScript + '</head>');
+        } else if (modifiedHtml.includes('<body')) {
+            modifiedHtml = modifiedHtml.replace('<body', protectMetaScript + '<body');
+        } else {
+            modifiedHtml = protectMetaScript + modifiedHtml;
+        }
+        
+        console.log('Meta tags updated with Bluefish content');
+        console.log('Meta protection script injected');
+        console.log('Framer elements removed from HTML');
+        
         res.send(modifiedHtml);
     } catch (error) {
         console.error('Error fetching from Framer app:', error.message);

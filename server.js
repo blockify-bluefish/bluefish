@@ -67,6 +67,12 @@ app.get('/', async (req, res) => {
             ''
         );
         
+        // Remove Framer events script
+        modifiedHtml = modifiedHtml.replace(
+            /<script[^>]*src="https:\/\/events\.framer\.com\/script\?v=2"[^>]*><\/script>/g, 
+            ''
+        );
+        
         console.log('Framer elements removed from HTML');
         
         // Cache the content

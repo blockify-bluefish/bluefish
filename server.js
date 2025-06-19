@@ -1,18 +1,51 @@
 const express = require('express');
-const fetch = require('node-fetch');
+// Node.js 18+ has built-in fetch, no need to import
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
+
+const FRAMER_URL = 'https://internal-area-042798.framer.app/';
 
 // Fetch and serve content from Framer app
 app.get('/', async (req, res) => {
     try {
-        const response = await fetch('https://internal-area-042798.framer.app/');
+        console.log('Fetching content from Framer app...');
+        
+        const response = await fetch(FRAMER_URL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            timeout: 10000
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const html = await response.text();
-        res.send(html);
+        console.log('Content fetched successfully, length:', html.length);
+        
+        // Modify the HTML to fix relative URLs
+        const modifiedHtml = html.replace(
+            /(href|src)="\/([^"]*)/g, 
+            `$1="${FRAMER_URL}$2`
+        );
+        
+        res.send(modifiedHtml);
     } catch (error) {
-        console.error('Error fetching from Framer app:', error);
-        res.status(500).send('Error loading content from Framer app');
+        console.error('Error fetching from Framer app:', error.message);
+        res.status(500).send(`
+            <html>
+                <body>
+                    <h2>Error loading content from Framer app</h2>
+                    <p>Details: ${error.message}</p>
+                    <p>Trying to fetch from: ${FRAMER_URL}</p>
+                    <a href="/">Try again</a>
+                </body>
+            </html>
+        `);
     }
 });
 

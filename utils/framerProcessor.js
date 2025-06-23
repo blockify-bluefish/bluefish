@@ -1,16 +1,4 @@
-const FRAMER_URL = 'https://internal-area-042798.framer.app/';
-
-// Language-specific meta content
-const metaContent = {
-    en: {
-        title: 'Bluefish - The Secure Web3 Gateway',
-        description: 'Your multi-chain wallet to explore DeFi, NFTs, and the future of Web3. Send tokens, swap on DEXs, and grow your community — all in one secure platform.'
-    },
-    vi: {
-        title: 'Bluefish - Cổng Web3 An Toàn',
-        description: 'Ví đa chuỗi để khám phá DeFi, NFT và tương lai của Web3. Gửi token, swap trên DEX và phát triển cộng đồng — tất cả trong một nền tảng an toàn.'
-    }
-};
+const { FRAMER_CONFIG, META_CONTENT, FEATURE_TOGGLES } = require('../configs');
 
 /**
  * Remove Framer-specific elements from HTML
@@ -23,7 +11,7 @@ function removeFramerElements(html) {
     // Fix relative URLs
     modifiedHtml = modifiedHtml.replace(
         /(href|src)="\/([^"]*)/g, 
-        `$1="${FRAMER_URL}$2`
+        `$1="${FRAMER_CONFIG.BASE_URL}$2`
     );
     
     // Remove Framer badge container
@@ -38,9 +26,21 @@ function removeFramerElements(html) {
         ''
     );
     
-    // Remove Framer events script
+    // Remove Framer events script (original script tag)
     modifiedHtml = modifiedHtml.replace(
         /<script[^>]*src="https:\/\/events\.framer\.com\/script\?v=2"[^>]*><\/script>/g, 
+        ''
+    );
+    
+    // Remove any other Framer tracking scripts
+    modifiedHtml = modifiedHtml.replace(
+        /<script[^>]*src="[^"]*events\.framer\.com[^"]*"[^>]*><\/script>/g, 
+        ''
+    );
+    
+    // Remove inline scripts that might contain tracking calls
+    modifiedHtml = modifiedHtml.replace(
+        /<script[^>]*>[\s\S]*?events\.framer\.com\/track[\s\S]*?<\/script>/gi, 
         ''
     );
     
@@ -86,7 +86,7 @@ function replaceMetaTags(html, meta) {
     // Replace meta tags content
     modifiedHtml = modifiedHtml.replace(
         /<meta name="generator" content="[^"]*">/g,
-        '<meta name="generator" content="Bluefish Web3 Gateway">'
+        `<meta name="generator" content="${meta.generator}">`
     );
     
     modifiedHtml = modifiedHtml.replace(
@@ -134,6 +134,54 @@ function generateMetaProtectionScript(meta) {
         <script>
             // Protect meta tags from being modified by Framer JavaScript
             (function() {
+                // Block Framer tracking API calls
+                const originalFetch = window.fetch;
+                const originalXHR = window.XMLHttpRequest;
+                
+                // Override fetch
+                window.fetch = function(url, options) {
+                    if (typeof url === 'string' && url.includes('events.framer.com/track')) {
+                        console.log('🚫 Blocked Framer tracking API call:', url);
+                        return Promise.resolve(new Response('{"blocked": true}', {
+                            status: 200,
+                            statusText: 'OK',
+                            headers: { 'Content-Type': 'application/json' }
+                        }));
+                    }
+                    return originalFetch.apply(this, arguments);
+                };
+                
+                // Override XMLHttpRequest
+                const XHROpen = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function(method, url, ...args) {
+                    if (typeof url === 'string' && url.includes('events.framer.com/track')) {
+                        console.log('🚫 Blocked Framer tracking XHR call:', url);
+                        // Create a fake successful response
+                        this.send = function() {};
+                        this.setRequestHeader = function() {};
+                        setTimeout(() => {
+                            this.readyState = 4;
+                            this.status = 200;
+                            this.responseText = '{"blocked": true}';
+                            if (this.onreadystatechange) this.onreadystatechange();
+                        }, 1);
+                        return;
+                    }
+                    return XHROpen.apply(this, arguments);
+                };
+                
+                // Block navigator.sendBeacon for tracking
+                if (window.navigator && window.navigator.sendBeacon) {
+                    const originalSendBeacon = window.navigator.sendBeacon;
+                    window.navigator.sendBeacon = function(url, data) {
+                        if (typeof url === 'string' && url.includes('events.framer.com/track')) {
+                            console.log('🚫 Blocked Framer sendBeacon call:', url);
+                            return true; // Pretend it was successful
+                        }
+                        return originalSendBeacon.apply(this, arguments);
+                    };
+                }
+                
                 // Store original meta content
                 const originalMetas = {
                     title: '${meta.title}',
@@ -237,14 +285,13 @@ function injectMetaProtectionScript(html, script) {
 }
 
 /**
- * Process HTML content with language-specific meta tags
+ * Process HTML content with meta tags
  * @param {string} path - Path to fetch from Framer
- * @param {string} language - Language code (en, vi)
  * @returns {Promise<string>} - Processed HTML content
  */
-async function processFramerContent(path = '', language = 'en') {
-    const url = FRAMER_URL + path;
-    console.log(`Fetching ${language} content from Framer app: ${url}`);
+async function processFramerContent(path = '') {
+    const url = FRAMER_CONFIG.BASE_URL + path;
+    console.log(`Fetching content from Framer app: ${url}`);
     
     const response = await fetch(url, {
         headers: {
@@ -260,29 +307,34 @@ async function processFramerContent(path = '', language = 'en') {
     }
     
     const html = await response.text();
-    console.log(`${language} content fetched successfully, length:`, html.length);
-    
-    // Get language-specific meta content
-    const meta = metaContent[language] || metaContent.en;
+    console.log(`Content fetched successfully, length:`, html.length);
     
     // Process HTML step by step
     let modifiedHtml = removeFramerElements(html);
     modifiedHtml = injectHideFramerCSS(modifiedHtml);
-    modifiedHtml = replaceMetaTags(modifiedHtml, meta);
     
-    // Generate and inject protection script
-    const protectMetaScript = generateMetaProtectionScript(meta);
-    modifiedHtml = injectMetaProtectionScript(modifiedHtml, protectMetaScript);
+    // Only apply meta content if feature is enabled
+    if (FEATURE_TOGGLES.USE_META_CONTENT) {
+        // Get meta content
+        const meta = META_CONTENT.en;
+        
+        modifiedHtml = replaceMetaTags(modifiedHtml, meta);
+        
+        // Generate and inject protection script
+        const protectMetaScript = generateMetaProtectionScript(meta);
+        modifiedHtml = injectMetaProtectionScript(modifiedHtml, protectMetaScript);
+        
+        console.log(`Meta tags updated with Bluefish content`);
+        console.log(`Meta protection script injected`);
+    } else {
+        console.log(`Meta content feature is disabled, skipping meta tag updates`);
+    }
     
-    console.log(`${language} meta tags updated with Bluefish content`);
-    console.log(`${language} meta protection script injected`);
-    console.log(`Framer elements removed from ${language} HTML`);
+    console.log(`Framer elements removed from HTML`);
     
     return modifiedHtml;
 }
 
 module.exports = {
-    processFramerContent,
-    FRAMER_URL,
-    metaContent
+    processFramerContent
 };

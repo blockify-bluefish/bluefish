@@ -2,6 +2,28 @@ const { FRAMER_CONFIG, META_CONTENT, FEATURE_TOGGLES } = require('../configs');
 const { processAndCacheMedia } = require('./mediaCache');
 
 /**
+ * Tạo URL chính xác từ base URL và path
+ * @param {string} baseUrl - Base URL
+ * @param {string} path - Path
+ * @returns {string} - URL đã được xử lý chính xác
+ */
+function buildUrl(baseUrl, path) {
+    // Loại bỏ dấu gạch chéo ở cuối baseUrl
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    
+    // Loại bỏ dấu gạch chéo ở đầu path
+    const cleanPath = path.replace(/^\//, '');
+    
+    // Nếu path rỗng, trả về baseUrl
+    if (!cleanPath) {
+        return cleanBaseUrl;
+    }
+    
+    // Nối baseUrl và path với một dấu gạch chéo
+    return `${cleanBaseUrl}/${cleanPath}`;
+}
+
+/**
  * Remove Framer-specific elements from HTML
  * @param {string} html - The HTML content to clean
  * @returns {string} - Cleaned HTML
@@ -9,10 +31,10 @@ const { processAndCacheMedia } = require('./mediaCache');
 function removeFramerElements(html) {
     let modifiedHtml = html;
     
-    // Fix relative URLs
+    // Fix relative URLs - sử dụng buildUrl để tránh dấu gạch chéo kép
     modifiedHtml = modifiedHtml.replace(
         /(href|src)="\/([^"]*)/g, 
-        `$1="${FRAMER_CONFIG.BASE_URL}$2`
+        (match, attr, path) => `${attr}="${buildUrl(FRAMER_CONFIG.BASE_URL, path)}"`
     );
     
     // Remove Framer badge container
@@ -291,7 +313,7 @@ function injectMetaProtectionScript(html, script) {
  * @returns {Promise<string>} - Processed HTML content
  */
 async function processFramerContent(path = '') {
-    const url = FRAMER_CONFIG.BASE_URL + path;
+    const url = buildUrl(FRAMER_CONFIG.BASE_URL, path);
     console.log(`Fetching content from Framer app: ${url}`);
     
     const response = await fetch(url, {
@@ -350,5 +372,6 @@ async function processFramerContent(path = '') {
 }
 
 module.exports = {
-    processFramerContent
+    processFramerContent,
+    buildUrl
 };

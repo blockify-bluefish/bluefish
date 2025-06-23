@@ -3,6 +3,9 @@ const { generateErrorPage } = require('../utils/errorPages');
 const { FRAMER_CONFIG } = require('../configs');
 const { ROUTES } = require('../site-config');
 
+// Import hàm buildUrl từ framerProcessor
+const { buildUrl } = require('../utils/framerProcessor');
+
 /**
  * Universal route handler - tự động detect ngôn ngữ và framerPath từ URL
  */
@@ -36,7 +39,7 @@ async function handleRoute(req, res) {
         const errorPage = generateErrorPage(
             language, 
             error.message, 
-            FRAMER_CONFIG.BASE_URL + framerPath, 
+            buildUrl(FRAMER_CONFIG.BASE_URL, framerPath), 
             requestedPath
         );
         res.status(500).send(errorPage);

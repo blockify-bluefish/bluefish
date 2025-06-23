@@ -1,4 +1,5 @@
 const { FRAMER_CONFIG, META_CONTENT, FEATURE_TOGGLES } = require('../configs');
+const { processAndCacheMedia } = require('./mediaCache');
 
 /**
  * Remove Framer-specific elements from HTML
@@ -312,6 +313,19 @@ async function processFramerContent(path = '') {
     // Process HTML step by step
     let modifiedHtml = removeFramerElements(html);
     modifiedHtml = injectHideFramerCSS(modifiedHtml);
+    
+    // Process và cache media content
+    if (FEATURE_TOGGLES.USE_MEDIA_CACHE) {
+        console.log('🖼️ Processing media content...');
+        const { html: htmlWithCachedMedia, mediaMap } = await processAndCacheMedia(modifiedHtml);
+        modifiedHtml = htmlWithCachedMedia;
+        
+        if (Object.keys(mediaMap).length > 0) {
+            console.log(`✅ Media cache completed: ${Object.keys(mediaMap).length} items cached`);
+        }
+    } else {
+        console.log('📄 Media cache feature is disabled, skipping media processing');
+    }
     
     // Only apply meta content if feature is enabled
     if (FEATURE_TOGGLES.USE_META_CONTENT) {

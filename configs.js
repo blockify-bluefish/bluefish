@@ -21,6 +21,7 @@ const FRAMER_CONFIG = {
 // Feature Toggle Configuration
 const FEATURE_TOGGLES = {
     USE_META_CONTENT: false,
+    USE_MEDIA_CACHE: true,
 };
 
 // Meta Content for different languages

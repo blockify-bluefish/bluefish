@@ -1,27 +1,20 @@
 const express = require('express');
 // Node.js 18+ has built-in fetch, no need to import
 
-const { 
-    handleEnglishRoute, 
-    handleVietnameseRoute,
-    handleEnglishPrivacyPolicyRoute,
-    handleEnglishTermsOfServiceRoute,
-    handleVietnamesePrivacyPolicyRoute,
-    handleVietnameseTermsOfServiceRoute
-} = require('./routes/handlers');
+const { handleRoute, getRoutePaths } = require('./routes/handlers');
 const { generate404Page } = require('./utils/errorPages');
 const { SERVER_CONFIG } = require('./configs');
+const { ROUTES } = require('./site-config');
 
 const app = express();
 const PORT = SERVER_CONFIG.PORT;
 
-// Routes
-app.get('/', handleEnglishRoute);
-app.get('/vi', handleVietnameseRoute);
-app.get('/privacy-policy', handleEnglishPrivacyPolicyRoute);
-app.get('/term-of-service', handleEnglishTermsOfServiceRoute);
-app.get('/vi/privacy-policy', handleVietnamesePrivacyPolicyRoute);
-app.get('/vi/term-of-service', handleVietnameseTermsOfServiceRoute);
+// Automatically register all routes from ROUTES configuration
+const routePaths = getRoutePaths();
+routePaths.forEach(path => {
+    app.get(path, handleRoute);
+    console.log(`✅ Registered route: ${path}`);
+});
 
 // Handle 404 errors
 app.use((req, res) => {
@@ -33,4 +26,5 @@ app.use((req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
     console.log(`📁 Serving files from: ${__dirname}`);
+    console.log(`🔗 Total routes registered: ${routePaths.length}`);
 });

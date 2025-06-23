@@ -1,3 +1,6 @@
+// Import cấu hình từ file dành cho người non-tech
+const { BASE_URL, ROUTES } = require('./site-config');
+
 // Server Configuration
 const SERVER_CONFIG = {
     PORT: process.env.PORT || 3001,
@@ -6,7 +9,7 @@ const SERVER_CONFIG = {
 
 // Framer Configuration
 const FRAMER_CONFIG = {
-    BASE_URL: 'https://internal-area-042798.framer.app/',
+    BASE_URL: BASE_URL,
     TRACKING_DOMAINS: ['events.framer.com'],
     ELEMENTS_TO_REMOVE: [
         '#__framer-badge-container',
@@ -32,16 +35,6 @@ const META_CONTENT = {
         description: 'Ví đa chuỗi để khám phá DeFi, NFT và tương lai của Web3. Gửi token, swap trên DEX và phát triển cộng đồng — tất cả trong một nền tảng an toàn.',
         generator: 'Bluefish Web3 Gateway'
     }
-};
-
-// Routes Configuration
-const ROUTES = {
-    ENGLISH: '/',
-    VIETNAMESE: '/vi',
-    PRIVACY_POLICY: '/privacy-policy',
-    TERMS_OF_SERVICE: '/term-of-service',
-    VIETNAMESE_PRIVACY_POLICY: '/vi/privacy-policy',
-    VIETNAMESE_TERMS_OF_SERVICE: '/vi/term-of-service'
 };
 
 module.exports = {

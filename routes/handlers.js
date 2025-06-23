@@ -1,96 +1,56 @@
 const { processFramerContent } = require('../utils/framerProcessor');
 const { generateErrorPage } = require('../utils/errorPages');
-const { FRAMER_CONFIG, ROUTES } = require('../configs');
+const { FRAMER_CONFIG } = require('../configs');
+const { ROUTES } = require('../site-config');
 
 /**
- * Handle English route
+ * Universal route handler - tự động detect ngôn ngữ và framerPath từ URL
  */
-async function handleEnglishRoute(req, res) {
+async function handleRoute(req, res) {
+    const requestedPath = req.path;
+    
+    // Kiểm tra xem route có tồn tại không
+    if (!ROUTES.includes(requestedPath)) {
+        const errorPage = generateErrorPage('en', 'Route not found', FRAMER_CONFIG.BASE_URL, '/');
+        return res.status(404).send(errorPage);
+    }
+    
+    // Tự động detect ngôn ngữ và framerPath
+    const isVietnamese = requestedPath.startsWith('/vi');
+    const language = isVietnamese ? 'vi' : 'en';
+    
+    // Tạo framerPath từ URL
+    let framerPath = requestedPath;
+    if (requestedPath === '/') {
+        framerPath = ''; // Trang chủ tiếng Anh
+    } else if (requestedPath === '/vi') {
+        framerPath = 'vi/'; // Trang chủ tiếng Việt
+    }
+    // Các route khác giữ nguyên (ví dụ: /privacy-policy, /vi/privacy-policy)
+    
     try {
-        const modifiedHtml = await processFramerContent('');
+        const modifiedHtml = await processFramerContent(framerPath);
         res.send(modifiedHtml);
     } catch (error) {
-        console.error('Error fetching from Framer app:', error.message);
-        const errorPage = generateErrorPage('en', error.message, FRAMER_CONFIG.BASE_URL, ROUTES.ENGLISH);
+        console.error(`Error fetching ${requestedPath} from Framer app:`, error.message);
+        const errorPage = generateErrorPage(
+            language, 
+            error.message, 
+            FRAMER_CONFIG.BASE_URL + framerPath, 
+            requestedPath
+        );
         res.status(500).send(errorPage);
     }
 }
 
 /**
- * Handle Vietnamese route
+ * Get all route paths for automatic registration
  */
-async function handleVietnameseRoute(req, res) {
-    try {
-        const modifiedHtml = await processFramerContent('vi/');
-        res.send(modifiedHtml);
-    } catch (error) {
-        console.error('Error fetching Vietnamese content from Framer app:', error.message);
-        const errorPage = generateErrorPage('vi', error.message, FRAMER_CONFIG.BASE_URL + 'vi/', ROUTES.VIETNAMESE);
-        res.status(500).send(errorPage);
-    }
-}
-
-/**
- * Handle English Privacy Policy route
- */
-async function handleEnglishPrivacyPolicyRoute(req, res) {
-    try {
-        const modifiedHtml = await processFramerContent('privacy-policy');
-        res.send(modifiedHtml);
-    } catch (error) {
-        console.error('Error fetching English Privacy Policy from Framer app:', error.message);
-        const errorPage = generateErrorPage('en', error.message, FRAMER_CONFIG.BASE_URL + 'privacy-policy', ROUTES.PRIVACY_POLICY);
-        res.status(500).send(errorPage);
-    }
-}
-
-/**
- * Handle English Terms of Service route
- */
-async function handleEnglishTermsOfServiceRoute(req, res) {
-    try {
-        const modifiedHtml = await processFramerContent('term-of-service');
-        res.send(modifiedHtml);
-    } catch (error) {
-        console.error('Error fetching English Terms of Service from Framer app:', error.message);
-        const errorPage = generateErrorPage('en', error.message, FRAMER_CONFIG.BASE_URL + 'term-of-service', ROUTES.TERMS_OF_SERVICE);
-        res.status(500).send(errorPage);
-    }
-}
-
-/**
- * Handle Vietnamese Privacy Policy route
- */
-async function handleVietnamesePrivacyPolicyRoute(req, res) {
-    try {
-        const modifiedHtml = await processFramerContent('vi/privacy-policy');
-        res.send(modifiedHtml);
-    } catch (error) {
-        console.error('Error fetching Vietnamese Privacy Policy from Framer app:', error.message);
-        const errorPage = generateErrorPage('vi', error.message, FRAMER_CONFIG.BASE_URL + 'vi/privacy-policy', ROUTES.VIETNAMESE_PRIVACY_POLICY);
-        res.status(500).send(errorPage);
-    }
-}
-
-/**
- * Handle Vietnamese Terms of Service route
- */
-async function handleVietnameseTermsOfServiceRoute(req, res) {
-    try {
-        const modifiedHtml = await processFramerContent('vi/term-of-service');
-        res.send(modifiedHtml);
-    } catch (error) {
-        console.error('Error fetching Vietnamese Terms of Service from Framer app:', error.message);
-        const errorPage = generateErrorPage('vi', error.message, FRAMER_CONFIG.BASE_URL + 'vi/term-of-service', ROUTES.VIETNAMESE_TERMS_OF_SERVICE);
-        res.status(500).send(errorPage);
-    }
+function getRoutePaths() {
+    return ROUTES;
 }
 
 module.exports = {
-    handleEnglishRoute,
-    handleVietnameseRoute,
-    handleEnglishPrivacyPolicyRoute,
-    handleEnglishTermsOfServiceRoute,
-    handleVietnamesePrivacyPolicyRoute,
-    handleVietnameseTermsOfServiceRoute
+    handleRoute,
+    getRoutePaths
 };

@@ -1,27 +1,16 @@
-const { FRAMER_CONFIG, META_CONTENT, FEATURE_TOGGLES } = require('../configs');
-const { processAndCacheMedia } = require('./mediaCache');
+const FRAMER_URL = 'https://internal-area-042798.framer.app/';
 
-/**
- * Tạo URL chính xác từ base URL và path
- * @param {string} baseUrl - Base URL
- * @param {string} path - Path
- * @returns {string} - URL đã được xử lý chính xác
- */
-function buildUrl(baseUrl, path) {
-    // Loại bỏ dấu gạch chéo ở cuối baseUrl
-    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-    
-    // Loại bỏ dấu gạch chéo ở đầu path
-    const cleanPath = path.replace(/^\//, '');
-    
-    // Nếu path rỗng, trả về baseUrl
-    if (!cleanPath) {
-        return cleanBaseUrl;
+// Language-specific meta content
+const metaContent = {
+    en: {
+        title: 'Bluefish - The Secure Web3 Gateway',
+        description: 'Your multi-chain wallet to explore DeFi, NFTs, and the future of Web3. Send tokens, swap on DEXs, and grow your community — all in one secure platform.'
+    },
+    vi: {
+        title: 'Bluefish - Cổng Web3 An Toàn',
+        description: 'Ví đa chuỗi để khám phá DeFi, NFT và tương lai của Web3. Gửi token, swap trên DEX và phát triển cộng đồng — tất cả trong một nền tảng an toàn.'
     }
-    
-    // Nối baseUrl và path với một dấu gạch chéo
-    return `${cleanBaseUrl}/${cleanPath}`;
-}
+};
 
 /**
  * Remove Framer-specific elements from HTML
@@ -31,10 +20,66 @@ function buildUrl(baseUrl, path) {
 function removeFramerElements(html) {
     let modifiedHtml = html;
     
-    // Fix relative URLs - sử dụng buildUrl để tránh dấu gạch chéo kép
+    // Fix relative URLs
     modifiedHtml = modifiedHtml.replace(
         /(href|src)="\/([^"]*)/g, 
-        (match, attr, path) => `${attr}="${buildUrl(FRAMER_CONFIG.BASE_URL, path)}"`
+        `$1="${FRAMER_URL}$2`
+    );
+    
+    // Proxy framerusercontent.com resources through our server
+    modifiedHtml = modifiedHtml.replace(
+        /(href|src)="https:\/\/framerusercontent\.com\/([^"]*)/g, 
+        '$1="/proxy/framerusercontent/$2'
+    );
+    
+    // Proxy edit.framer.com resources
+    modifiedHtml = modifiedHtml.replace(
+        /(href|src)="https:\/\/edit\.framer\.com\/([^"]*)/g, 
+        '$1="/proxy/editframer/$2'
+    );
+    
+    // Proxy app.framerstatic.com resources
+    modifiedHtml = modifiedHtml.replace(
+        /(href|src)="https:\/\/app\.framerstatic\.com\/([^"]*)/g, 
+        '$1="/proxy/framerstatic/$2'
+    );
+    
+    // Proxy Google Fonts
+    modifiedHtml = modifiedHtml.replace(
+        /(href|src)="https:\/\/fonts\.gstatic\.com\/([^"]*)/g, 
+        '$1="/proxy/fonts/$2'
+    );
+    
+    // Block Framer API calls
+    modifiedHtml = modifiedHtml.replace(
+        /(href|src)="https:\/\/api\.framer\.com\/([^"]*)/g, 
+        '$1="/proxy/framerapi/$2'
+    );
+    
+    // Also handle any imports or other references to these domains
+    modifiedHtml = modifiedHtml.replace(
+        /https:\/\/framerusercontent\.com\/([^"'\s)]*)/g, 
+        '/proxy/framerusercontent/$1'
+    );
+    
+    modifiedHtml = modifiedHtml.replace(
+        /https:\/\/edit\.framer\.com\/([^"'\s)]*)/g, 
+        '/proxy/editframer/$1'
+    );
+    
+    modifiedHtml = modifiedHtml.replace(
+        /https:\/\/app\.framerstatic\.com\/([^"'\s)]*)/g, 
+        '/proxy/framerstatic/$1'
+    );
+    
+    modifiedHtml = modifiedHtml.replace(
+        /https:\/\/fonts\.gstatic\.com\/([^"'\s)]*)/g, 
+        '/proxy/fonts/$1'
+    );
+    
+    modifiedHtml = modifiedHtml.replace(
+        /https:\/\/api\.framer\.com\/([^"'\s)]*)/g, 
+        '/proxy/framerapi/$1'
     );
     
     // Remove Framer badge container
@@ -109,7 +154,7 @@ function replaceMetaTags(html, meta) {
     // Replace meta tags content
     modifiedHtml = modifiedHtml.replace(
         /<meta name="generator" content="[^"]*">/g,
-        `<meta name="generator" content="${meta.generator}">`
+        '<meta name="generator" content="Bluefish Web3 Gateway">'
     );
     
     modifiedHtml = modifiedHtml.replace(
@@ -148,6 +193,93 @@ function replaceMetaTags(html, meta) {
 }
 
 /**
+ * Generate early blocking script (inject trước tất cả scripts khác)
+ * @returns {string} - Early blocking script HTML
+ */
+function generateEarlyBlockingScript() {
+    return `
+        <script>
+            // EARLY BLOCKING SCRIPT - Chặn ngay từ đầu
+            (function() {
+                console.log('🚀 Early blocking script initialized');
+                
+                // Backup original functions ngay lập tức
+                const originalFetch = window.fetch;
+                const originalXHR = window.XMLHttpRequest;
+                const originalSendBeacon = window.navigator?.sendBeacon;
+                
+                // Function để check nếu URL cần block
+                function shouldBlock(url) {
+                    if (typeof url !== 'string') return false;
+                    return url.includes('events.framer.com') || 
+                           url.includes('api.framer.com') || 
+                           url.includes('app.framerstatic.com');
+                }
+                
+                // Override fetch NGAY LẬP TỨC
+                window.fetch = function(url, options) {
+                    if (shouldBlock(url)) {
+                        console.log('🚫 EARLY BLOCKED fetch call:', url);
+                        return Promise.resolve(new Response('{"blocked": true, "early": true}', {
+                            status: 200,
+                            statusText: 'OK',
+                            headers: { 'Content-Type': 'application/json' }
+                        }));
+                    }
+                    return originalFetch ? originalFetch.apply(this, arguments) : Promise.reject(new Error('Fetch not available'));
+                };
+                
+                // Override XMLHttpRequest NGAY LẬP TỨC
+                if (window.XMLHttpRequest) {
+                    const OriginalXHR = window.XMLHttpRequest;
+                    window.XMLHttpRequest = function() {
+                        const xhr = new OriginalXHR();
+                        const originalOpen = xhr.open;
+                        
+                        xhr.open = function(method, url, ...args) {
+                            if (shouldBlock(url)) {
+                                console.log('🚫 EARLY BLOCKED XHR call:', url);
+                                // Create fake XHR that does nothing
+                                this.send = function() {};
+                                this.setRequestHeader = function() {};
+                                setTimeout(() => {
+                                    this.readyState = 4;
+                                    this.status = 200;
+                                    this.responseText = '{"blocked": true, "early": true}';
+                                    if (this.onreadystatechange) this.onreadystatechange();
+                                    if (this.onload) this.onload();
+                                }, 1);
+                                return;
+                            }
+                            return originalOpen.apply(this, arguments);
+                        };
+                        
+                        return xhr;
+                    };
+                    
+                    // Copy static properties
+                    Object.setPrototypeOf(window.XMLHttpRequest.prototype, OriginalXHR.prototype);
+                    Object.setPrototypeOf(window.XMLHttpRequest, OriginalXHR);
+                }
+                
+                // Override sendBeacon NGAY LẬP TỨC
+                if (window.navigator && window.navigator.sendBeacon) {
+                    window.navigator.sendBeacon = function(url, data) {
+                        if (shouldBlock(url)) {
+                            console.log('🚫 EARLY BLOCKED sendBeacon call:', url);
+                            return true;
+                        }
+                        return originalSendBeacon ? originalSendBeacon.apply(this, arguments) : true;
+                    };
+                }
+                
+                console.log('✅ Early blocking script ready - ALL API calls will be blocked');
+            })();
+        </script>
+    `;
+}
+
+/**
  * Generate meta protection script
  * @param {object} meta - Meta content object
  * @returns {string} - Protection script HTML
@@ -161,10 +293,14 @@ function generateMetaProtectionScript(meta) {
                 const originalFetch = window.fetch;
                 const originalXHR = window.XMLHttpRequest;
                 
-                // Override fetch
+                // Override fetch - CHẶN TẤT CẢ API calls
                 window.fetch = function(url, options) {
-                    if (typeof url === 'string' && url.includes('events.framer.com/track')) {
-                        console.log('🚫 Blocked Framer tracking API call:', url);
+                    if (typeof url === 'string' && (
+                        url.includes('events.framer.com') ||
+                        url.includes('api.framer.com') ||
+                        url.includes('app.framerstatic.com')
+                    )) {
+                        console.log('🚫 Blocked ALL Framer API call:', url);
                         return Promise.resolve(new Response('{"blocked": true}', {
                             status: 200,
                             statusText: 'OK',
@@ -174,11 +310,15 @@ function generateMetaProtectionScript(meta) {
                     return originalFetch.apply(this, arguments);
                 };
                 
-                // Override XMLHttpRequest
+                // Override XMLHttpRequest - CHẶN TẤT CẢ API calls
                 const XHROpen = XMLHttpRequest.prototype.open;
                 XMLHttpRequest.prototype.open = function(method, url, ...args) {
-                    if (typeof url === 'string' && url.includes('events.framer.com/track')) {
-                        console.log('🚫 Blocked Framer tracking XHR call:', url);
+                    if (typeof url === 'string' && (
+                        url.includes('events.framer.com') ||
+                        url.includes('api.framer.com') ||
+                        url.includes('app.framerstatic.com')
+                    )) {
+                        console.log('🚫 Blocked ALL Framer API XHR call:', url);
                         // Create a fake successful response
                         this.send = function() {};
                         this.setRequestHeader = function() {};
@@ -192,13 +332,33 @@ function generateMetaProtectionScript(meta) {
                     }
                     return XHROpen.apply(this, arguments);
                 };
+                            this.status = 200;
+                            this.responseText = '{"blocked": true}';
+                            if (this.onreadystatechange) this.onreadystatechange();
+                        }, 1);
+                        return;
+                    }
+                    return XHROpen.apply(this, arguments);
+                };
+                            this.status = 200;
+                            this.responseText = '{"blocked": true}';
+                            if (this.onreadystatechange) this.onreadystatechange();
+                        }, 1);
+                        return;
+                    }
+                    return XHROpen.apply(this, arguments);
+                };
                 
-                // Block navigator.sendBeacon for tracking
+                // Block navigator.sendBeacon - CHẶN TẤT CẢ
                 if (window.navigator && window.navigator.sendBeacon) {
                     const originalSendBeacon = window.navigator.sendBeacon;
                     window.navigator.sendBeacon = function(url, data) {
-                        if (typeof url === 'string' && url.includes('events.framer.com/track')) {
-                            console.log('🚫 Blocked Framer sendBeacon call:', url);
+                        if (typeof url === 'string' && (
+                            url.includes('events.framer.com') ||
+                            url.includes('api.framer.com') ||
+                            url.includes('app.framerstatic.com')
+                        )) {
+                            console.log('🚫 Blocked ALL Framer sendBeacon call:', url);
                             return true; // Pretend it was successful
                         }
                         return originalSendBeacon.apply(this, arguments);
@@ -308,13 +468,14 @@ function injectMetaProtectionScript(html, script) {
 }
 
 /**
- * Process HTML content with meta tags
+ * Process HTML content with language-specific meta tags
  * @param {string} path - Path to fetch from Framer
+ * @param {string} language - Language code (en, vi)
  * @returns {Promise<string>} - Processed HTML content
  */
-async function processFramerContent(path = '') {
-    const url = buildUrl(FRAMER_CONFIG.BASE_URL, path);
-    console.log(`Fetching content from Framer app: ${url}`);
+async function processFramerContent(path = '', language = 'en') {
+    const url = FRAMER_URL + path;
+    console.log(`Fetching ${language} content from Framer app: ${url}`);
     
     const response = await fetch(url, {
         headers: {
@@ -330,48 +491,41 @@ async function processFramerContent(path = '') {
     }
     
     const html = await response.text();
-    console.log(`Content fetched successfully, length:`, html.length);
+    console.log(`${language} content fetched successfully, length:`, html.length);
+    
+    // Get language-specific meta content
+    const meta = metaContent[language] || metaContent.en;
+    
+    // BƯỚC 1: Inject early blocking script TRƯỚC TIÊN (ngay đầu HTML)
+    const earlyBlockingScript = generateEarlyBlockingScript();
+    if (html.includes('<head>')) {
+        modifiedHtml = html.replace('<head>', '<head>' + earlyBlockingScript);
+    } else if (html.includes('<html>')) {
+        modifiedHtml = html.replace('<html>', '<html>' + earlyBlockingScript);  
+    } else {
+        modifiedHtml = earlyBlockingScript + html;
+    }
     
     // Process HTML step by step
-    let modifiedHtml = removeFramerElements(html);
+    modifiedHtml = removeFramerElements(modifiedHtml);
     modifiedHtml = injectHideFramerCSS(modifiedHtml);
+    modifiedHtml = replaceMetaTags(modifiedHtml, meta);
     
-    // Process và cache media content
-    if (FEATURE_TOGGLES.USE_MEDIA_CACHE) {
-        console.log('🖼️ Processing media content...');
-        const { html: htmlWithCachedMedia, mediaMap } = await processAndCacheMedia(modifiedHtml);
-        modifiedHtml = htmlWithCachedMedia;
-        
-        if (Object.keys(mediaMap).length > 0) {
-            console.log(`✅ Media cache completed: ${Object.keys(mediaMap).length} items cached`);
-        }
-    } else {
-        console.log('📄 Media cache feature is disabled, skipping media processing');
-    }
+    // Generate and inject protection script
+    const protectMetaScript = generateMetaProtectionScript(meta);
+    modifiedHtml = injectMetaProtectionScript(modifiedHtml, protectMetaScript);
     
-    // Only apply meta content if feature is enabled
-    if (FEATURE_TOGGLES.USE_META_CONTENT) {
-        // Get meta content
-        const meta = META_CONTENT.en;
-        
-        modifiedHtml = replaceMetaTags(modifiedHtml, meta);
-        
-        // Generate and inject protection script
-        const protectMetaScript = generateMetaProtectionScript(meta);
-        modifiedHtml = injectMetaProtectionScript(modifiedHtml, protectMetaScript);
-        
-        console.log(`Meta tags updated with Bluefish content`);
-        console.log(`Meta protection script injected`);
-    } else {
-        console.log(`Meta content feature is disabled, skipping meta tag updates`);
-    }
-    
-    console.log(`Framer elements removed from HTML`);
+    console.log(`${language} meta tags updated with Bluefish content`);
+    console.log(`${language} EARLY BLOCKING script injected FIRST`);
+    console.log(`${language} meta protection script injected`);
+    console.log(`Framer elements removed from ${language} HTML`);
     
     return modifiedHtml;
 }
 
 module.exports = {
     processFramerContent,
-    buildUrl
+    generateEarlyBlockingScript,
+    FRAMER_URL,
+    metaContent
 };

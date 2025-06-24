@@ -13,7 +13,9 @@ const ROUTES = [
     '/privacy-policy',
     '/term-of-service',
     '/vi/privacy-policy',
-    '/vi/term-of-service'
+    '/vi/term-of-service',
+    '/download-app',
+    '/vi/download-app',
 ];
 
 // ========================================

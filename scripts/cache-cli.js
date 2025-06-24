@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-const { showCacheInfo, clearCache, cleanExpiredCache } = require('../utils/cacheManager');
+const { showCacheInfo, clearAllCacheCLI, clearSiteCacheCLI, cleanExpiredCache } = require('../utils/cacheManager');
 
 const command = process.argv[2];
+const siteUrl = process.argv[3];
 
 async function main() {
     switch (command) {
@@ -12,31 +13,34 @@ async function main() {
             break;
             
         case 'clear':
-            console.log('🗑️ Clearing all cache...');
-            const deletedCount = await clearCache();
-            console.log(`✅ Cleared ${deletedCount} files`);
+            if (siteUrl) {
+                await clearSiteCacheCLI(siteUrl);
+            } else {
+                await clearAllCacheCLI();
+            }
             break;
             
         case 'clean':
             console.log('🧹 Cleaning expired cache...');
             const cleanedCount = await cleanExpiredCache();
-            console.log(`✅ Cleaned ${cleanedCount} expired files`);
+            console.log(`✅ Cleaned ${cleanedCount} expired sites`);
             break;
             
         default:
             console.log(`
-🎯 Media Cache CLI Tool
+🎯 Asset Cache CLI Tool
 
-Usage: node scripts/cache-cli.js <command>
+Usage: node scripts/cache-cli.js <command> [siteUrl]
 
 Commands:
-  info, stats    Show cache statistics
-  clear          Clear all cached files
-  clean          Clean expired cache files
+  info, stats           Show cache statistics
+  clear [siteUrl]       Clear cache (all or specific site)
+  clean                 Clean expired cache sites
 
 Examples:
   node scripts/cache-cli.js info
   node scripts/cache-cli.js clear
+  node scripts/cache-cli.js clear "https://example.framer.app"
   node scripts/cache-cli.js clean
             `);
             break;

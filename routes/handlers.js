@@ -1,10 +1,25 @@
-const { processFramerContent } = require('../utils/framerProcessor');
+const { processFramerContent, FRAMER_URL } = require('../utils/framerProcessor');
 const { generateErrorPage } = require('../utils/errorPages');
 const { FRAMER_CONFIG } = require('../configs');
 const { ROUTES } = require('../site-config');
 
-// Import hàm buildUrl từ framerProcessor
-const { buildUrl } = require('../utils/framerProcessor');
+/**
+ * Build URL by combining base URL and path
+ * @param {string} baseUrl - Base URL
+ * @param {string} path - Path to append
+ * @returns {string} - Complete URL
+ */
+function buildUrl(baseUrl, path) {
+    // Remove trailing slash from baseUrl and leading slash from path
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const cleanPath = path.replace(/^\//, '');
+    
+    if (!cleanPath) {
+        return cleanBaseUrl + '/';
+    }
+    
+    return cleanBaseUrl + '/' + cleanPath;
+}
 
 /**
  * Universal route handler - tự động detect ngôn ngữ và framerPath từ URL
@@ -23,16 +38,21 @@ async function handleRoute(req, res) {
     const language = isVietnamese ? 'vi' : 'en';
     
     // Tạo framerPath từ URL
-    let framerPath = requestedPath;
+    let framerPath = '';
     if (requestedPath === '/') {
         framerPath = ''; // Trang chủ tiếng Anh
     } else if (requestedPath === '/vi') {
         framerPath = 'vi/'; // Trang chủ tiếng Việt
+    } else if (isVietnamese) {
+        // Vietnamese routes: /vi/privacy-policy -> vi/privacy-policy
+        framerPath = requestedPath.substring(1); // Remove leading slash
+    } else {
+        // English routes: /privacy-policy -> privacy-policy
+        framerPath = requestedPath.substring(1); // Remove leading slash
     }
-    // Các route khác giữ nguyên (ví dụ: /privacy-policy, /vi/privacy-policy)
     
     try {
-        const modifiedHtml = await processFramerContent(framerPath);
+        const modifiedHtml = await processFramerContent(framerPath, language);
         res.send(modifiedHtml);
     } catch (error) {
         console.error(`Error fetching ${requestedPath} from Framer app:`, error.message);

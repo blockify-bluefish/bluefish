@@ -203,6 +203,28 @@ function generateEarlyBlockingScript() {
             (function() {
                 console.log('🚀 Early blocking script initialized');
                 
+                // Test function để verify blocking hoạt động
+                window.__bluefishBlockingTest__ = function() {
+                    console.log('Testing blocking system...');
+                    
+                    // Test fetch
+                    fetch('https://api.framer.com/test')
+                        .then(r => r.json())
+                        .then(data => console.log('Fetch test result:', data));
+                    
+                    // Test XHR
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', 'https://app.framerstatic.com/test');
+                    xhr.onload = () => console.log('XHR test result:', xhr.responseText);
+                    xhr.send();
+                    
+                    // Test sendBeacon
+                    if (navigator.sendBeacon) {
+                        const result = navigator.sendBeacon('https://events.framer.com/test', 'data');
+                        console.log('SendBeacon test result:', result);
+                    }
+                };
+                
                 // Backup original functions ngay lập tức
                 const originalFetch = window.fetch;
                 const originalXHR = window.XMLHttpRequest;
@@ -274,6 +296,7 @@ function generateEarlyBlockingScript() {
                 }
                 
                 console.log('✅ Early blocking script ready - ALL API calls will be blocked');
+                console.log('💡 Test blocking system with: __bluefishBlockingTest__()');
             })();
         </script>
     `;
@@ -506,6 +529,8 @@ async function processFramerContent(path = '', language = 'en') {
         modifiedHtml = earlyBlockingScript + html;
     }
     
+    console.log(`🚀 EARLY BLOCKING SCRIPT INJECTED for ${language} - API calls will be blocked`);
+    
     // Process HTML step by step
     modifiedHtml = removeFramerElements(modifiedHtml);
     modifiedHtml = injectHideFramerCSS(modifiedHtml);
@@ -516,9 +541,9 @@ async function processFramerContent(path = '', language = 'en') {
     modifiedHtml = injectMetaProtectionScript(modifiedHtml, protectMetaScript);
     
     console.log(`${language} meta tags updated with Bluefish content`);
-    console.log(`${language} EARLY BLOCKING script injected FIRST`);
     console.log(`${language} meta protection script injected`);
     console.log(`Framer elements removed from ${language} HTML`);
+    console.log(`🛡️ COMPLETE BLOCKING SYSTEM ACTIVE for ${language}`);
     
     return modifiedHtml;
 }

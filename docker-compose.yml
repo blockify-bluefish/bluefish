@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  bluefish-website:
+    build:
+      context: .
+      target: production
+    container_name: bluefish-website
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    restart: unless-stopped
+
+  # Development service (optional)
+  bluefish-website-dev:
+    build:
+      context: .
+      target: development
+    container_name: bluefish-website-dev
+    ports:
+      - "3002:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    restart: unless-stopped
+    profiles:
+      - dev 

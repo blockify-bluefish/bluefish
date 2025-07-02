@@ -23,7 +23,7 @@ jobs:
         id: docker_build
         with:
           context: ./
-          file: ./dockerfile.production
+          file: ./Dockerfile
           builder: ${{ steps.buildx.outputs.name }}
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_APPNAME }}.prod
